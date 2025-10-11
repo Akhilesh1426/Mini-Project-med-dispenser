@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medicine Dispenser Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .stat-card h3 {
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .subtext {
+            font-size: 0.9rem;
+            color: #999;
+        }
+
+        .stat-card.success .value {
+            color: #10b981;
+        }
+
+        .stat-card.danger .value {
+            color: #ef4444;
+        }
+
+        .stat-card.warning .value {
+            color: #f59e0b;
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .chart-card h2 {
+            font-size: 1.3rem;
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        .calendar-heatmap {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        .calendar-heatmap h2 {
+            font-size: 1.3rem;
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .heatmap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+            gap: 5px;
+            margin-top: 20px;
+        }
+
+        .heatmap-day {
+            aspect-ratio: 1;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            position: relative;
+        }
+
+        .heatmap-day:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+
+        .heatmap-day.level-0 {
+            background: #f3f4f6;
+            color: #9ca3af;
+        }
+
+        .heatmap-day.level-1 {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .heatmap-day.level-2 {
+            background: #86efac;
+            color: #14532d;
+        }
+
+        .heatmap-day.level-3 {
+            background: #10b981;
+            color: white;
+        }
+
+        .heatmap-day.level-missed {
+            background: #fecaca;
+            color: #991b1b;
+        }
+
+        .heatmap-legend {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.5rem;
+            padding: 50px;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .refresh-info {
+            text-align: center;
+            color: white;
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-card .value {
+                font-size: 2rem;
+            }
+
+            .heatmap-grid {
+                grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
+                gap: 3px;
+            }
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            pointer-events: none;
+            z-index: 1000;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💊 Medicine Dispenser Dashboard</h1>
+            <p>Real-time tracking and adherence monitoring</p>
+        </div>
+
+        <div id="loading" class="loading">Loading dashboard data...</div>
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div id="dashboard" style="display: none;">
+            <!-- Statistics Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Doses</h3>
+                    <div class="value" id="totalDoses">0</div>
+                    <div class="subtext">Last 30 days</div>
+                </div>
+
+                <div class="stat-card success">
+                    <h3>Doses Taken</h3>
+                    <div class="value" id="dosesTaken">0</div>
+                    <div class="subtext" id="takenPercentage">0%</div>
+                </div>
+
+                <div class="stat-card danger">
+                    <h3>Doses Missed</h3>
+                    <div class="value" id="dosesMissed">0</div>
+                    <div class="subtext" id="missedPercentage">0%</div>
+                </div>
+
+                <div class="stat-card warning">
+                    <h3>Adherence Rate</h3>
+                    <div class="value" id="adherenceRate">0%</div>
+                    <div class="subtext">Overall compliance</div>
+                </div>
+
+                <div class="stat-card">
+                    <h3>Current Streak</h3>
+                    <div class="value" id="currentStreak">0</div>
+                    <div class="subtext">days</div>
+                </div>
+
+                <div class="stat-card">
+                    <h3>Best Streak</h3>
+                    <div class="value" id="bestStreak">0</div>
+                    <div class="subtext">days</div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h2>📊 Dose Trends Over Time</h2>
+                    <div class="chart-container">
+                        <canvas id="lineChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h2>🥧 Adherence Overview</h2>
+                    <div class="chart-container">
+                        <canvas id="pieChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h2>📈 Daily Compliance</h2>
+                    <div class="chart-container">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h2>📅 Recent Events</h2>
+                    <div class="chart-container">
+                        <canvas id="recentEventsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calendar Heatmap -->
+            <div class="calendar-heatmap">
+                <h2>📅 30-Day Adherence Calendar</h2>
+                <div id="heatmapContainer" class="heatmap-grid"></div>
+                <div class="heatmap-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #f3f4f6;"></div>
+                        <span>No doses</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #fef3c7;"></div>
+                        <span>1 dose</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #86efac;"></div>
+                        <span>2 doses</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #10b981;"></div>
+                        <span>3 doses (complete)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #fecaca;"></div>
+                        <span>Missed doses</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="refresh-info">
+                🔄 Dashboard auto-refreshes every 30 seconds
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API Base URL - update if needed
+        const API_URL = window.location.origin;
+
+        let charts = {};
+
+        // Fetch statistics and events
+        async function fetchData() {
+            try {
+                const [statsResponse, eventsResponse] = await Promise.all([
+                    fetch(`${API_URL}/api/statistics?days=30`),
+                    fetch(`${API_URL}/api/events?limit=100`)
+                ]);
+
+                if (!statsResponse.ok || !eventsResponse.ok) {
+                    throw new Error('Failed to fetch data');
+                }
+
+                const statsData = await statsResponse.json();
+                const eventsData = await eventsResponse.json();
+
+                return {
+                    statistics: statsData.statistics,
+                    dailyBreakdown: statsData.daily_breakdown,
+                    events: eventsData.events
+                };
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                throw error;
+            }
+        }
+
+        // Update statistics cards
+        function updateStatistics(stats) {
+            document.getElementById('totalDoses').textContent = stats.total_doses;
+            document.getElementById('dosesTaken').textContent = stats.doses_taken;
+            document.getElementById('dosesMissed').textContent = stats.doses_missed;
+            document.getElementById('adherenceRate').textContent = stats.adherence_percentage + '%';
+            document.getElementById('currentStreak').textContent = stats.current_streak;
+            document.getElementById('bestStreak').textContent = stats.best_streak;
+
+            const takenPercent = stats.total_doses > 0 ? 
+                ((stats.doses_taken / stats.total_doses) * 100).toFixed(1) : 0;
+            const missedPercent = stats.total_doses > 0 ? 
+                ((stats.doses_missed / stats.total_doses) * 100).toFixed(1) : 0;
+
+            document.getElementById('takenPercentage').textContent = takenPercent + '% of total';
+            document.getElementById('missedPercentage').textContent = missedPercent + '% of total';
+        }
+
+        // Create line chart for dose trends
+        function createLineChart(dailyBreakdown) {
+            const ctx = document.getElementById('lineChart').getContext('2d');
+            
+            // Sort dates and prepare data
+            const dates = Object.keys(dailyBreakdown).sort().reverse().slice(0, 14).reverse();
+            const takenData = dates.map(date => dailyBreakdown[date].taken || 0);
+            const missedData = dates.map(date => dailyBreakdown[date].missed || 0);
+            const labels = dates.map(date => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+
+            if (charts.lineChart) {
+                charts.lineChart.destroy();
+            }
+
+            charts.lineChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Doses Taken',
+                            data: takenData,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Doses Missed',
+                            data: missedData,
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create pie chart for adherence
+        function createPieChart(stats) {
+            const ctx = document.getElementById('pieChart').getContext('2d');
+
+            if (charts.pieChart) {
+                charts.pieChart.destroy();
+            }
+
+            charts.pieChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Doses Taken', 'Doses Missed'],
+                    datasets: [{
+                        data: [stats.doses_taken, stats.doses_missed],
+                        backgroundColor: ['#10b981', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create bar chart for daily compliance
+        function createBarChart(dailyBreakdown) {
+            const ctx = document.getElementById('barChart').getContext('2d');
+            
+            const dates = Object.keys(dailyBreakdown).sort().reverse().slice(0, 10).reverse();
+            const complianceData = dates.map(date => {
+                const taken = dailyBreakdown[date].taken || 0;
+                return (taken / 3) * 100;  // Assuming 3 doses per day
+            });
+            const labels = dates.map(date => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+
+            if (charts.barChart) {
+                charts.barChart.destroy();
+            }
+
+            charts.barChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Daily Compliance %',
+                        data: complianceData,
+                        backgroundColor: complianceData.map(val => 
+                            val === 100 ? '#10b981' : val >= 66 ? '#f59e0b' : '#ef4444'
+                        ),
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create recent events chart
+        function createRecentEventsChart(events) {
+            const ctx = document.getElementById('recentEventsChart').getContext('2d');
+            
+            const recentEvents = events.slice(0, 10).reverse();
+            const labels = recentEvents.map((event, index) => `#${index + 1}`);
+            const data = recentEvents.map(event => event.event_type === 'TAKEN' ? 1 : -1);
+            const colors = recentEvents.map(event => event.event_type === 'TAKEN' ? '#10b981' : '#ef4444');
+
+            if (charts.recentEventsChart) {
+                charts.recentEventsChart.destroy();
+            }
+
+            charts.recentEventsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Recent Events',
+                        data: data,
+                        backgroundColor: colors,
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const event = recentEvents[context.dataIndex];
+                                    return `${event.event_type} - Dose #${event.dose_number}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create calendar heatmap
+        function createHeatmap(dailyBreakdown) {
+            const container = document.getElementById('heatmapContainer');
+            container.innerHTML = '';
+
+            // Generate last 30 days
+            const days = [];
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                days.push(date);
+            }
+
+            days.forEach(date => {
+                const dateStr = date.toISOString().split('T')[0];
+                const dayData = dailyBreakdown[dateStr] || { taken: 0, missed: 0 };
+                
+                const dayElement = document.createElement('div');
+                dayElement.className = 'heatmap-day';
+                
+                // Determine level based on doses taken
+                let level = 'level-0';
+                if (dayData.missed > 0) {
+                    level = 'level-missed';
+                } else if (dayData.taken === 3) {
+                    level = 'level-3';
+                } else if (dayData.taken === 2) {
+                    level = 'level-2';
+                } else if (dayData.taken === 1) {
+                    level = 'level-1';
+                }
+                
+                dayElement.classList.add(level);
+                dayElement.textContent = date.getDate();
+                dayElement.title = `${date.toLocaleDateString()}: ${dayData.taken} taken, ${dayData.missed} missed`;
+                
+                container.appendChild(dayElement);
+            });
+        }
+
+        // Initialize dashboard
+        async function initDashboard() {
+            try {
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('error').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'none';
+
+                const data = await fetchData();
+
+                updateStatistics(data.statistics);
+                createLineChart(data.dailyBreakdown);
+                createPieChart(data.statistics);
+                createBarChart(data.dailyBreakdown);
+                createRecentEventsChart(data.events);
+                createHeatmap(data.dailyBreakdown);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = 'Error loading dashboard data. Please refresh the page.';
+                console.error('Dashboard initialization error:', error);
+            }
+        }
+
+        // Auto-refresh every 30 seconds
+        initDashboard();
+        setInterval(initDashboard, 30000);
+    </script>
+</body>
+</html>
